@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Golf Ball Classifier</title>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+
+        h1 {
+            font-size: 24px;
+        }
+
+        #preview {
+            width: 90%;
+            max-width: 350px;
+            margin-top: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        #top-prediction {
+            margin-top: 20px;
+            font-size: 22px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        #upload-btn {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 18px;
+            text-decoration: none;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        #upload-btn:hover {
+            background-color: #2980b9;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Golf Ball Classifier</h1>
+
+    <label id="upload-btn" for="imageUpload">Take or Choose Photo</label>
+    <input type="file" accept="image/*" id="imageUpload" capture="environment">
+
+    <br>
+    <canvas id="resized-canvas" style="display:none;"></canvas>
+    <img id="preview" src="" alt="Upload Preview" />
+    <div id="top-prediction"></div>
+
+    <script type="text/javascript">
+        const URL = "https://teachablemachine.withgoogle.com/models/XXXXXXXXX/"; // replace with your model URL
+
+        let model, maxPredictions;
+
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+        }
+
+        async function predict(imageElement) {
+            const prediction = await model.predict(imageElement);
+            prediction.sort((a, b) => b.probability - a.probability);
+            const top = prediction[0];
+            document.getElementById("top-prediction").innerText = `Prediction: ${top.className} (${(top.probability * 100).toFixed(1)}%)`;
+        }
+
+        window.addEventListener('load', () => {
+            init();
+
+            const uploadInput = document.getElementById('imageUpload');
+            const preview = document.getElementById('preview');
+            const resizedCanvas = document.getElementById('resized-canvas');
+
+            uploadInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        const img = new Image();
+                        img.src = e.target.result;
+                        img.onload = function () {
+                            // Resize image before preview/predict
+                            const maxDim = 300; // Resize to max 300px width/height
+                            let width = img.width;
+                            let height = img.height;
+
+                            if (width > height) {
+                                if (width > maxDim) {
+                                    height *= maxDim / width;
+                                    width = maxDim;
+                                }
+                            } else {
+                                if (height > maxDim) {
+                                    width *= maxDim / height;
+                                    height = maxDim;
+                                }
+                            }
+
+                            resizedCanvas.width = width;
+                            resizedCanvas.height = height;
+                            const ctx = resizedCanvas.getContext('2d');
+                            ctx.clearRect(0, 0, width, height);
+                            ctx.drawImage(img, 0, 0, width, height);
+
+                            // Preview (use the resized image)
+                            preview.src = resizedCanvas.toDataURL('image/jpeg');
+
+                            // Predict using the resized canvas
+                            predict(resizedCanvas);
+                        }
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+        });
+    </script>
+
+</body>
+
+</html>
